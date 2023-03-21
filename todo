@@ -1,0 +1,239 @@
+#!/usr/bin/env ruby
+
+require "optparse"
+require "ostruct"
+require "fileutils"
+
+# Todo:
+# 
+# TODO_DIRECTORY="Documents/todos"
+#
+# This simple todo command, conforms to (roughly) the xit specification
+# found in github: https://github.com/jotaen/xit/blob/main/Specification.md 
+# 
+# todo command summary:
+# 
+# $ todo -h
+#
+# All commands: will have an implied -f $TODO_DIRECOTORY/todos.xit UNLESS 
+#               otherwise specified with a -f filename.xit
+#
+# add a todo list item: todo some text
+# print all todos (-f todos.xit is implied): todo  (print as is but insert a (N) at end 
+# print all todos .. searching for text: todo -p /some text
+# print all todos ... that are still open: todo -p open
+# print all todos ... that are closed: todo -p closed
+#
+# mark a item done: todo -x N
+# edit the todos via an editor: todo -e
+# 
+
+# helper class for todo items
+
+class Todo
+  def initialize(path)
+    @path = path
+    File.open(path, "r") do |f|
+      @lines = f.readlines.map(&:chomp)
+    end
+    @map = Array.new()   # map "real todo items to array items in @lines array"
+    _map()
+  end
+
+  def _map()
+    @lines.each_index {|n|
+      if @lines[n][0] == '[' then
+        @map << n
+      end
+    }
+  end
+
+  def _parse(olditem)
+
+    olditem, duedate = olditem.split('->')
+    duedate = duedate.nil? ? "" : "-> #{duedate}"
+ 
+    m = /^(\[.\] [!\.]{0,})(.*)/.match(olditem)
+    parsed = m[1], m[2], duedate
+    return parsed
+  end
+
+  def mark(id, type)
+    olditem = @lines[@map[id]][3..]
+    case type
+      when 'done'
+        olditem = "[x]#{olditem}"
+      when 'open'
+        olditem = "[ ]#{olditem}"
+    end
+    @lines[@map[id]] = olditem
+    flush()
+  end
+
+  def flush()
+    File.open(@path, "w") do |f|
+      @lines.each do |l|
+        l += "\n"
+        f.write(l)
+      end
+    end
+  end
+end
+
+options = OpenStruct.new(:id => -1, :filename => "todos.xit", :print => true, :type => 'all',
+                         :markdone => false, :markopen => false, :edit => false, :search => false)
+
+parser = OptionParser.new do |opts|
+  opts.banner = "usage: todo [options] [arguments]\n\n    todo with no options and arguments, prints entire list\n\n\n"
+
+  opts.on("-x", "--done ID", OptionParser::DecimalInteger, "mark item ID as done") do |id| 
+    options.markdone = true
+    options.id = id
+    options.print = false
+  end
+
+  opts.on("-X", "--open ID", OptionParser::DecimalInteger, "mark item ID as open") do |id| 
+    options.markopen = true
+    options.id = id
+    options.print = false
+  end
+
+  opts.on("-f", "--filename FILENAME", String, "use filename instead of default todos.xit") do |filename|
+    options.filename = filename
+  end
+
+  opts.on("-e", "--edit", "open todo list in editor") do 
+    options.edit = true
+    options.print = false
+  end
+
+  opts.on("-p", "--print {[open|closed]}", "todo print open or closed") do |type| 
+    options.edit = false
+    options.print = true 
+    options.type = type
+  end
+
+  opts.on("-h", "help") do
+    puts opts
+    exit 0
+  end
+end
+
+parser.parse!
+#pp options
+#pp ARGV
+
+# check for valid options
+
+if options.markdone == true or options.markopen == true then
+  if options.id == -1 then
+    puts "ID is required" 
+    exit 1
+  end
+end
+
+# start of main part of script
+
+description = ''
+search = ''
+
+if ! ARGV.empty? then
+  if ARGV[0][0] == '/' then
+    options.search = true
+    options.print = false
+    search = ARGV.join(' ')
+    search = search[1..]
+  else
+    description = ARGV.join(' ')
+    options.search = false
+    options.print = false
+  end
+end
+
+# common stuff
+
+home = ENV['HOME']
+directory = ENV['TODO_DIRECTORY'] || home + "/Documents/todos/"
+path = directory + options.filename
+editor = ENV['EDITOR'] || 'nano'
+
+FileUtils.mkdir_p(directory)
+FileUtils.touch(path)  # make sure file exists, if it doesn't create i
+
+options.type = options.type.downcase      # make sure type is lowercased
+
+# todo -e
+if options.edit then
+  system "#{editor} #{path}"
+  exit 0
+end
+
+# print options, and search
+
+if options.print or options.search then
+  n = -1
+  File.open(path, "r") do |f|
+    data = f.readlines.map(&:chomp)
+
+    prevtype = ''
+    data.each do |l|
+      if l[0] == '[' then
+        prevtype = ''
+        n += 1
+        line = l + " (ID = #{n})"
+        if options.print then
+          case options.type
+            when 'all'
+              puts line
+            when 'open'
+              if line[0..2] == '[ ]' then
+                puts line
+                prevtype = 'open'
+              end
+            when 'closed'
+              if line[0..2] == '[x]' then
+                puts line
+                prevtype = 'closed'
+              end
+          end
+        else
+          if line.include? (search) then
+            puts line
+          end
+        end
+      else 
+        puts l if options.type == 'all'
+        puts l if l[0..3] == '    ' and options.type == 'open' and prevtype == 'open'
+        puts l if l[0..3] == '    ' and options.type == 'closed' and prevtype == 'closed'
+      end
+    end
+  end
+  exit 0
+end
+
+# mark open or closed
+# if line has [.] and want to mark open, then change it to [ ]
+# and write in place
+# if line has [ ] and want to mark closed, then change it to [x]
+# and write in place
+
+if options.markopen then
+  t = Todo.new(path)
+  t.mark(options.id, 'open')
+  exit 0
+end
+
+if options.markdone then
+  t = Todo.new(path)
+  t.mark(options.id, 'done')
+  exit 0
+end
+
+# last thing: add a new item:
+# make sure it is open [ ]
+# append to file
+
+File.open(path, "a") do |f|
+  f.print "[ ] #{description}\n"
+end
+

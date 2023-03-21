@@ -1,0 +1,13 @@
+[x] this is item 1
+[ ] this is item 2
+[x] this is a closed item 3
+[ ] open item after a closed item
+[ ] add this item at the end
+[x] final thought
+    an additional line for the final thought
+    #todofinal -> 2023/04
+
+ham radio todo items
+[ ] do prep for nanoVNA
+[ ] prepare for POTA
+[x] put feet on icom 7300
