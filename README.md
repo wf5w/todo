@@ -127,3 +127,23 @@ $ alias wtodo="todo -f work.xit"
 
 $ alias p1todo="todo -f project1.work.xit"
 
+## Use the same todos directory on multiple linux clients
+
+let say you have a todos directory (in ~/Documents/todos) on your server machine
+that you want to be able to access on your client.
+
+here is how to do that:
+* create a passwordless ssh from your client to your server, and test it
+* install sshfs if it is not already installed
+* edit /etc/fuse.conf and uncomment user_allow_other
+* mount your server todos directory to your local client mount point
+
+remote: ~/Documents/todos/ 
+
+local: create a mount point (~/Documents/todos)
+
+$ sshfs user@remote_machine:/home/user/Documents/todos/ ~/Documents/todos
+
+once you have this working, then look at this to set it up on fstab:
+see https://ubuntuforums.org/showthread.php?t=430312 for explanation
+
