@@ -154,6 +154,7 @@ end
 
 home = ENV['HOME']
 directory = ENV['TODO_DIRECTORY'] || home + "/Documents/todos/"
+directory += '/' if directory[-1] != '/'
 path = directory + options.filename
 editor = ENV['EDITOR'] || 'nano'
 
