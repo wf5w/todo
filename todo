@@ -107,7 +107,7 @@ parser = OptionParser.new do |opts|
     options.print = false
   end
 
-  opts.on("-p", "--print {[open|closed]}", "todo print open or closed") do |type| 
+  opts.on("-p", "--print {[open|closed|all]}", "todo print open or closed") do |type| 
     options.edit = false
     options.print = true 
     options.type = type
