@@ -30,7 +30,7 @@ add a todo list item: $ todo some new description text
 
 print all todos (-f todos.xit is implied): $ todo 
 
-print all todos .. searching for text: todo -p /some text
+print all todos .. searching for text: todo /some text   # a beginning / is required
 
 print all todos ... that are still open: todo -p open
 
@@ -56,7 +56,7 @@ usage: todo [options] [arguments]
     -X, --open ID                    mark item ID as open
     -f, --filename FILENAME          use filename instead of default todos.xit
     -e, --edit                       open todo list in editor
-    -p, --print {[open|closed]}      todo print open or closed
+    -p, --print {[open|closed|all]}  todo print open or closed
     -h                               help
 ```
 
